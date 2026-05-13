@@ -1,0 +1,1213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0">
+<title>NameGenderDetector — AI Powered v3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #04080f;
+  --bg2: #070d1a;
+  --surface: rgba(8,18,42,0.7);
+  --surface2: rgba(5,12,30,0.9);
+  --border: rgba(0,200,255,0.12);
+  --border2: rgba(0,200,255,0.25);
+  --cyan: #00c8ff;
+  --cyan-dim: rgba(0,200,255,0.6);
+  --pink: #ff3dca;
+  --green: #00ffaa;
+  --yellow: #ffd166;
+  --text: #cce0f5;
+  --muted: #3d5570;
+  --muted2: #5a7a99;
+  --male: #38b8ff;
+  --female: #ff5ce8;
+  --unknown: #00ffaa;
+  --r: 18px;
+  --r-sm: 12px;
+}
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+html { scroll-behavior:smooth; }
+
+body {
+  font-family:'Syne',sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  min-height:100vh;
+  overflow-x:hidden;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ═══ BACKGROUND ═══ */
+.bg-fx {
+  position:fixed; inset:0; pointer-events:none; z-index:0;
+}
+.bg-fx::before {
+  content:'';position:absolute;inset:0;
+  background-image:
+    linear-gradient(rgba(0,200,255,0.025) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(0,200,255,0.025) 1px,transparent 1px);
+  background-size:50px 50px;
+}
+.bg-fx::after {
+  content:'';position:absolute;inset:0;
+  background:
+    radial-gradient(ellipse 70% 50% at 50% -10%,rgba(0,90,180,0.18),transparent),
+    radial-gradient(ellipse 40% 30% at 85% 80%,rgba(255,61,202,0.06),transparent),
+    radial-gradient(ellipse 30% 25% at 10% 60%,rgba(0,200,255,0.05),transparent);
+}
+
+.wrap { max-width:1400px; margin:auto; padding:16px; position:relative; z-index:1; }
+
+/* ═══ HEADER ═══ */
+header {
+  text-align:center;
+  padding:clamp(28px,6vw,60px) 0 clamp(20px,4vw,40px);
+}
+.header-badge {
+  display:inline-flex;align-items:center;gap:8px;
+  background:rgba(0,200,255,0.08);
+  border:1px solid rgba(0,200,255,0.2);
+  border-radius:99px;padding:5px 14px;
+  font-size:11px;font-family:'JetBrains Mono',monospace;
+  color:var(--cyan);letter-spacing:1.5px;text-transform:uppercase;
+  margin-bottom:16px;
+}
+.header-badge .pulse {
+  width:7px;height:7px;border-radius:50%;background:var(--green);
+  animation:pulse 2s infinite;
+}
+@keyframes pulse {
+  0%,100%{box-shadow:0 0 0 0 rgba(0,255,170,0.5)}
+  50%{box-shadow:0 0 0 6px rgba(0,255,170,0)}
+}
+h1 {
+  font-size:clamp(26px,6vw,56px);
+  font-weight:800;letter-spacing:-2px;line-height:1;
+  background:linear-gradient(135deg,var(--cyan) 0%,#80e8ff 30%,var(--pink) 65%,var(--green) 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+}
+.tagline {
+  margin-top:10px;
+  font-family:'JetBrains Mono',monospace;
+  font-size:clamp(10px,2.5vw,13px);
+  color:var(--muted2);
+  letter-spacing:2px;text-transform:uppercase;
+}
+
+/* ═══ INFO STRIP ═══ */
+.info-strip {
+  display:flex;flex-wrap:wrap;gap:8px;
+  margin-bottom:16px;
+}
+.info-chip {
+  display:inline-flex;align-items:center;gap:6px;
+  background:rgba(0,200,255,0.05);
+  border:1px solid var(--border);
+  border-radius:8px;padding:6px 12px;
+  font-size:11px;font-family:'JetBrains Mono',monospace;color:var(--muted2);
+}
+.info-chip b { color:var(--cyan); }
+
+/* ═══ PANEL ═══ */
+.panel {
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--r);
+  backdrop-filter:blur(20px);
+  box-shadow:0 4px 40px rgba(0,0,0,0.3),inset 0 1px 0 rgba(255,255,255,0.03);
+  overflow:hidden;
+  transition:border-color 0.3s;
+}
+.panel:focus-within { border-color:var(--border2); }
+.panel-hdr {
+  padding:14px 18px;
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:10px;
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px;font-weight:600;
+  letter-spacing:1.5px;text-transform:uppercase;color:var(--cyan);
+}
+.panel-hdr .dot {
+  width:7px;height:7px;border-radius:50%;
+  background:var(--cyan);box-shadow:0 0 8px var(--cyan);
+  flex-shrink:0;
+}
+
+/* ═══ TOOLBAR ═══ */
+.toolbar {
+  display:flex;flex-wrap:wrap;gap:8px;align-items:center;
+  padding:12px 16px;border-bottom:1px solid var(--border);
+}
+.toolbar-note {
+  flex:1;min-width:150px;
+  font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted2);
+  line-height:1.5;
+}
+.toolbar-note b { color:var(--cyan); }
+
+/* ═══ UPLOAD ZONE ═══ */
+.upload-zone {
+  margin:12px 16px;
+  border:2px dashed rgba(0,200,255,0.18);
+  border-radius:var(--r-sm);
+  padding:clamp(14px,3vw,22px) 16px;
+  text-align:center;cursor:pointer;
+  transition:all 0.25s;position:relative;overflow:hidden;
+}
+.upload-zone.drag-over, .upload-zone:hover {
+  border-color:rgba(0,200,255,0.45);
+  background:rgba(0,200,255,0.04);
+}
+.upload-zone input {
+  position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;
+}
+.upload-icon { font-size:28px;margin-bottom:6px; }
+.upload-text { font-size:13px;color:var(--muted2);line-height:1.5; }
+.upload-text strong { color:var(--cyan); }
+
+/* ═══ TEXTAREA ═══ */
+.ta-wrap { padding:12px 16px; }
+textarea {
+  width:100%;
+  background:rgba(0,3,14,0.8);
+  color:#d8ecff;
+  border:1px solid rgba(0,200,255,0.1);
+  border-radius:var(--r-sm);
+  padding:14px;
+  font-family:'JetBrains Mono',monospace;
+  font-size:12px;line-height:1.75;
+  outline:none;resize:vertical;
+  transition:border-color 0.25s;
+  -webkit-appearance:none;
+}
+textarea:focus { border-color:rgba(0,200,255,0.3); }
+#inputData { height:clamp(150px,30vw,220px); min-height:120px; }
+.ta-footer {
+  display:flex;justify-content:space-between;align-items:center;
+  margin-top:6px;flex-wrap:wrap;gap:4px;
+}
+.ta-footer span {
+  font-size:10px;color:var(--muted);
+  font-family:'JetBrains Mono',monospace;
+}
+
+/* ═══ FILTER ROW ═══ */
+.filter-row {
+  display:flex;gap:8px;padding:10px 16px;
+  border-top:1px solid var(--border);
+  flex-wrap:wrap;
+}
+.search-inp {
+  flex:1;min-width:120px;
+  background:rgba(0,5,20,0.7);
+  border:1px solid var(--border);
+  border-radius:8px;
+  padding:8px 12px;
+  color:var(--text);
+  font-family:'JetBrains Mono',monospace;font-size:12px;
+  outline:none;-webkit-appearance:none;
+}
+.search-inp:focus { border-color:var(--border2); }
+.search-inp::placeholder { color:var(--muted); }
+
+/* ═══ BUTTONS ═══ */
+.btn {
+  border:none;cursor:pointer;border-radius:10px;
+  font-family:'Syne',sans-serif;font-weight:700;font-size:13px;
+  padding:10px 16px;
+  transition:all 0.2s;
+  display:inline-flex;align-items:center;gap:6px;
+  letter-spacing:0.3px;
+  -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;
+  white-space:nowrap;
+}
+.btn-primary {
+  background:linear-gradient(135deg,#0055bb,#0099ee);
+  color:#fff;box-shadow:0 4px 18px rgba(0,150,255,0.3);
+  padding:12px 20px;font-size:14px;
+}
+.btn-primary:hover { transform:translateY(-1px);box-shadow:0 6px 24px rgba(0,150,255,0.45); }
+.btn-primary:active { transform:translateY(0); }
+.btn-primary:disabled { opacity:0.5;cursor:not-allowed;transform:none; }
+.btn-ghost { background:rgba(255,255,255,0.05);color:var(--text);border:1px solid var(--border); }
+.btn-ghost:hover { background:rgba(255,255,255,0.09);border-color:var(--border2); }
+.btn-male { background:rgba(56,184,255,0.1);color:var(--male);border:1px solid rgba(56,184,255,0.2); }
+.btn-male:hover { background:rgba(56,184,255,0.2); }
+.btn-female { background:rgba(255,92,232,0.1);color:var(--female);border:1px solid rgba(255,92,232,0.2); }
+.btn-female:hover { background:rgba(255,92,232,0.2); }
+.btn-unknown { background:rgba(0,255,170,0.07);color:var(--unknown);border:1px solid rgba(0,255,170,0.18); }
+.btn-unknown:hover { background:rgba(0,255,170,0.14); }
+.btn-danger { background:rgba(255,70,70,0.1);color:#ff6060;border:1px solid rgba(255,70,70,0.2); }
+.btn-danger:hover { background:rgba(255,70,70,0.18); }
+
+.btn-row {
+  display:flex;flex-wrap:wrap;gap:8px;
+  padding:12px 16px 16px;
+}
+.btn-row-full { flex-direction:column; }
+
+/* ═══ PROGRESS ═══ */
+.prog-wrap { padding:0 16px 14px;display:none; }
+.prog-label {
+  display:flex;justify-content:space-between;align-items:center;
+  font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--cyan);
+  margin-bottom:7px;gap:8px;
+}
+.prog-label span:last-child { color:var(--green);flex-shrink:0; }
+.prog-bar { height:5px;background:rgba(0,200,255,0.08);border-radius:99px;overflow:hidden; }
+.prog-fill {
+  height:100%;
+  background:linear-gradient(90deg,var(--cyan),var(--pink));
+  border-radius:99px;transition:width 0.4s ease;width:0%;
+}
+.prog-detail {
+  font-family:'JetBrains Mono',monospace;font-size:10px;
+  color:var(--muted2);margin-top:5px;min-height:14px;
+}
+
+/* ═══ AI MODE BADGE ═══ */
+.ai-chip {
+  display:inline-flex;align-items:center;gap:6px;
+  background:linear-gradient(135deg,rgba(0,200,255,0.1),rgba(255,61,202,0.1));
+  border:1px solid rgba(0,200,255,0.2);
+  border-radius:99px;padding:4px 12px;
+  font-size:10px;font-family:'JetBrains Mono',monospace;
+  color:var(--cyan);letter-spacing:1px;
+}
+.ai-chip .ai-dot {
+  width:6px;height:6px;border-radius:50%;
+  background:var(--pink);
+  animation:pulse 1.5s infinite;
+}
+
+/* ═══ STATS ═══ */
+.stats-row {
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:12px;
+  margin-bottom:16px;
+}
+@media(max-width:600px) {
+  .stats-row { grid-template-columns:repeat(2,1fr); }
+}
+.stat-card {
+  padding:clamp(14px,3vw,22px) 12px;
+  text-align:center;position:relative;overflow:hidden;border-radius:16px;
+}
+.stat-card::before {
+  content:'';position:absolute;inset:0;border-radius:16px;opacity:0.06;
+}
+.stat-m::before { background:var(--male); }
+.stat-f::before { background:var(--female); }
+.stat-u::before { background:var(--unknown); }
+.stat-t::before { background:#fff; }
+.stat-label {
+  font-size:10px;text-transform:uppercase;letter-spacing:2px;
+  color:var(--muted2);margin-bottom:8px;
+  font-family:'JetBrains Mono',monospace;
+}
+.stat-num {
+  font-size:clamp(32px,7vw,48px);font-weight:800;line-height:1;
+}
+.stat-pct {
+  font-size:11px;color:var(--muted2);margin-top:5px;
+  font-family:'JetBrains Mono',monospace;
+}
+.stat-m .stat-num { color:var(--male);text-shadow:0 0 20px rgba(56,184,255,0.4); }
+.stat-f .stat-num { color:var(--female);text-shadow:0 0 20px rgba(255,92,232,0.4); }
+.stat-u .stat-num { color:var(--unknown);text-shadow:0 0 20px rgba(0,255,170,0.4); }
+.stat-t .stat-num { color:#fff; }
+.pie-wrap {
+  display:flex;align-items:center;justify-content:center;gap:14px;
+  padding:10px 0 2px;
+}
+.pie {
+  width:70px;height:70px;border-radius:50%;flex-shrink:0;
+  background:conic-gradient(#1a2a3a 0deg,#1a2a3a 360deg);
+  transition:background 0.8s ease;
+}
+.pie-legend { display:flex;flex-direction:column;gap:6px; }
+.leg-item {
+  display:flex;align-items:center;gap:6px;
+  font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--muted2);
+}
+.leg-dot { width:8px;height:8px;border-radius:3px;flex-shrink:0; }
+
+/* ═══ RESULTS GRID ═══ */
+.results-grid {
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:14px;
+  margin-bottom:16px;
+}
+@media(max-width:900px) {
+  .results-grid { grid-template-columns:1fr; }
+}
+.res-hdr {
+  padding:12px 16px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+}
+.res-title {
+  display:flex;align-items:center;gap:8px;
+  font-weight:700;font-size:14px;
+}
+.res-badge {
+  font-size:11px;background:rgba(255,255,255,0.07);
+  border-radius:6px;padding:2px 8px;
+  font-family:'JetBrains Mono',monospace;color:var(--muted2);
+}
+.res-actions { display:flex;gap:6px; }
+.icon-btn {
+  width:32px;height:32px;
+  border:1px solid var(--border);border-radius:8px;
+  background:transparent;cursor:pointer;
+  color:var(--muted2);
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;transition:all 0.2s;
+  -webkit-tap-highlight-color:transparent;
+}
+.icon-btn:hover { background:rgba(255,255,255,0.07);color:var(--text);border-color:var(--border2); }
+.result-ta {
+  width:100%;background:rgba(0,2,12,0.85);color:#cce8ff;
+  border:none;padding:14px;
+  font-family:'JetBrains Mono',monospace;font-size:11.5px;
+  line-height:1.8;resize:vertical;
+  height:clamp(200px,40vw,280px);outline:none;
+  border-radius:0 0 var(--r) var(--r);
+}
+
+/* ═══ MODAL ═══ */
+.modal-bg {
+  position:fixed;inset:0;
+  background:rgba(0,0,0,0.75);z-index:1000;
+  display:none;align-items:flex-end;justify-content:center;
+  backdrop-filter:blur(6px);
+  padding:0;
+}
+.modal-bg.open { display:flex; }
+@media(min-width:500px) {
+  .modal-bg { align-items:center; }
+}
+.modal {
+  background:#070f22;
+  border:1px solid rgba(0,200,255,0.25);
+  border-radius:20px 20px 0 0;
+  padding:clamp(20px,5vw,32px);
+  width:100%;max-width:460px;
+  box-shadow:0 -10px 60px rgba(0,0,0,0.6);
+}
+@media(min-width:500px) {
+  .modal { border-radius:20px; }
+}
+.modal h3 { font-size:18px;margin-bottom:18px;color:var(--cyan); }
+.modal-grid {
+  display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;
+}
+.export-opt {
+  border:1px solid var(--border);border-radius:12px;padding:18px 12px;
+  text-align:center;cursor:pointer;
+  transition:all 0.2s;background:transparent;color:var(--text);
+  font-family:'Syne',sans-serif;font-size:13px;font-weight:600;
+}
+.export-opt:hover { border-color:var(--cyan);background:rgba(0,200,255,0.06); }
+.export-opt .icon { font-size:26px;display:block;margin-bottom:8px; }
+.modal-close {
+  width:100%;padding:13px;border-radius:10px;
+  background:rgba(255,255,255,0.05);border:1px solid var(--border);
+  color:var(--muted2);cursor:pointer;
+  font-family:'Syne',sans-serif;font-size:13px;font-weight:600;
+}
+.modal-close:hover { background:rgba(255,255,255,0.09); }
+
+/* ═══ TOAST ═══ */
+.toast {
+  position:fixed;
+  bottom:20px;left:50%;transform:translateX(-50%) translateY(20px);
+  z-index:9999;
+  background:rgba(5,15,35,0.97);
+  border:1px solid rgba(0,200,255,0.3);
+  border-radius:12px;padding:11px 20px;
+  font-size:13px;color:var(--cyan);
+  font-family:'JetBrains Mono',monospace;
+  box-shadow:0 8px 30px rgba(0,0,0,0.5);
+  opacity:0;transition:all 0.3s;
+  white-space:nowrap;max-width:90vw;overflow:hidden;text-overflow:ellipsis;
+}
+.toast.show { opacity:1;transform:translateX(-50%) translateY(0); }
+
+/* ═══ MOBILE ACTION SHEET ═══ */
+.mobile-btns {
+  display:none;
+}
+@media(max-width:600px) {
+  .mobile-btns {
+    display:grid;grid-template-columns:1fr 1fr;gap:8px;
+    padding:0 16px 16px;
+  }
+  .desktop-only { display:none !important; }
+}
+@media(min-width:601px) {
+  .mobile-only { display:none !important; }
+}
+
+/* ═══ TABS (mobile result switcher) ═══ */
+.tab-bar {
+  display:none;
+}
+@media(max-width:900px) {
+  .tab-bar {
+    display:flex;gap:0;
+    margin-bottom:12px;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:12px;overflow:hidden;
+  }
+  .tab-btn {
+    flex:1;padding:11px 8px;
+    background:transparent;border:none;cursor:pointer;
+    font-family:'Syne',sans-serif;font-size:12px;font-weight:700;
+    color:var(--muted2);transition:all 0.2s;
+    border-right:1px solid var(--border);
+  }
+  .tab-btn:last-child { border-right:none; }
+  .tab-btn.active { background:rgba(0,200,255,0.1);color:var(--cyan); }
+  .tab-btn.tab-m.active { color:var(--male);background:rgba(56,184,255,0.1); }
+  .tab-btn.tab-f.active { color:var(--female);background:rgba(255,92,232,0.1); }
+  .tab-btn.tab-u.active { color:var(--unknown);background:rgba(0,255,170,0.07); }
+  .results-grid { display:block; }
+  .res-panel { display:none; }
+  .res-panel.active { display:block; }
+}
+
+footer {
+  text-align:center;padding:28px 0 20px;
+  color:var(--muted);font-size:11px;
+  font-family:'JetBrains Mono',monospace;
+}
+footer a { color:var(--cyan);text-decoration:none; }
+
+/* ═══ AI STATUS PANEL ═══ */
+.ai-log {
+  font-family:'JetBrains Mono',monospace;font-size:10.5px;
+  color:var(--muted2);line-height:1.7;min-height:20px;
+  padding:0 16px 10px;
+}
+.ai-log .ai-line { color:var(--cyan-dim); }
+.ai-log .done-line { color:var(--green); }
+.ai-log .err-line { color:#ff7070; }
+
+</style>
+</head>
+<body>
+<div class="bg-fx"></div>
+<div class="wrap">
+
+<!-- HEADER -->
+<header>
+  <div class="header-badge">AI Based
+  </div>
+  <h1>NameGender<br class="mobile-only">Detector</h1>
+  <p class="tagline">Bangla · Bengali · Universal Name Analysis</p>
+</header>
+
+<!-- INFO STRIP -->
+<div class="info-strip">
+  <span class="info-chip">📋 <span>Format:</span>&nbsp;<b>01XXXXXXXXX নাম</b> বা শুধু <b>নাম</b></span>
+  <span class="info-chip">🧠 <b>AI-First</b>&nbsp;Engine — যেকোনো নাম ডিটেক্ট করে</span>
+  <span class="info-chip">⚡ <b>Batch</b>&nbsp;AI — দ্রুত গণ-বিশ্লেষণ</span>
+  <span class="info-chip">📦 <b>TXT · CSV · JSON</b>&nbsp;Export</span>
+</div>
+
+<!-- INPUT SECTION -->
+<div class="panel" style="margin-bottom:16px">
+  <div class="panel-hdr">
+    <div class="dot"></div>
+    INPUT DATA
+    <div style="margin-left:auto">
+      <span class="ai-chip"><span class="ai-dot"></span>AI Active</span>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <div class="toolbar-note">
+      সমর্থিত: <b>01XXXXXXXXX নাম</b> অথবা শুধু <b>নাম</b> — প্রতি লাইনে একটি
+    </div>
+    <button class="btn btn-ghost" onclick="loadSample()">📝 Sample</button>
+    <button class="btn btn-ghost desktop-only" onclick="pasteClip()">📋 Paste</button>
+  </div>
+
+  <div class="upload-zone" id="uploadZone">
+    <input type="file" id="fileInput" accept=".txt,.csv" multiple>
+    <div class="upload-icon">📂</div>
+    <div class="upload-text"><strong>ফাইল ড্র্যাগ করুন বা ট্যাপ করুন</strong><br>.txt বা .csv সাপোর্টেড</div>
+  </div>
+
+  <div class="ta-wrap">
+    <textarea id="inputData" placeholder="উদাহরণ:&#10;01XXXXXXXXX সেফালি আন্টি&#10;01XXXXXXXXX আরিফ হাসান&#10;Nusrat Jahan&#10;Mohammad Zahirul Haq&#10;Sumaiya Akter&#10;Karim Hossain&#10;Jennifer Smith&#10;Ahmed Al-Hassan"></textarea>
+    <div class="ta-footer">
+      <span id="lineCount">0 lines</span>
+      <span id="charCount">0 chars</span>
+    </div>
+  </div>
+
+  <div class="filter-row">
+    <input class="search-inp" id="searchInp" placeholder="🔍 ফলাফলে খুঁজুন...">
+    <button class="btn btn-ghost" onclick="sortInput()">↕️</button>
+    <button class="btn btn-ghost" onclick="dedupeInput()">🔃</button>
+    <button class="btn btn-ghost" onclick="downloadAll()">📦</button>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn btn-primary" id="processBtn">⚡ Process Gender</button>
+    <button class="btn btn-danger" onclick="clearAll()">🗑️</button>
+    <button class="btn btn-male desktop-only" onclick="copyResult('maleOut')">♂ Copy Male</button>
+    <button class="btn btn-female desktop-only" onclick="copyResult('femaleOut')">♀ Copy Female</button>
+    <button class="btn btn-unknown desktop-only" onclick="copyResult('unknownOut')">❓ Copy Unknown</button>
+  </div>
+
+  <!-- MOBILE COPY BUTTONS -->
+  <div class="mobile-btns">
+    <button class="btn btn-male" style="justify-content:center" onclick="copyResult('maleOut')">♂ Copy Male</button>
+    <button class="btn btn-female" style="justify-content:center" onclick="copyResult('femaleOut')">♀ Copy Female</button>
+    <button class="btn btn-unknown" style="justify-content:center" onclick="copyResult('unknownOut')">❓ Copy Unknown</button>
+    <button class="btn btn-ghost" style="justify-content:center" onclick="pasteClip()">📋 Paste</button>
+  </div>
+
+  <div class="prog-wrap" id="progWrap">
+    <div class="prog-label">
+      <span id="progText">Analyzing...</span>
+      <span id="progPct">0%</span>
+    </div>
+    <div class="prog-bar"><div class="prog-fill" id="progFill"></div></div>
+    <div class="prog-detail" id="progDetail"></div>
+  </div>
+  <div class="ai-log" id="aiLog"></div>
+</div>
+
+<!-- STATS -->
+<div class="stats-row">
+  <div class="panel stat-card stat-m">
+    <div class="stat-label">Male</div>
+    <div class="stat-num" id="maleCount">0</div>
+    <div class="stat-pct" id="malePct">—</div>
+  </div>
+  <div class="panel stat-card stat-f">
+    <div class="stat-label">Female</div>
+    <div class="stat-num" id="femaleCount">0</div>
+    <div class="stat-pct" id="femalePct">—</div>
+  </div>
+  <div class="panel stat-card stat-u">
+    <div class="stat-label">Unknown</div>
+    <div class="stat-num" id="unknownCount">0</div>
+    <div class="stat-pct" id="unknownPct">—</div>
+  </div>
+  <div class="panel stat-card stat-t">
+    <div class="stat-label">Total</div>
+    <div class="stat-num" id="totalCount">0</div>
+    <div class="pie-wrap">
+      <div class="pie" id="pieChart"></div>
+      <div class="pie-legend">
+        <div class="leg-item"><div class="leg-dot" style="background:var(--male)"></div>Male</div>
+        <div class="leg-item"><div class="leg-dot" style="background:var(--female)"></div>Female</div>
+        <div class="leg-item"><div class="leg-dot" style="background:var(--unknown)"></div>Unknown</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MOBILE TABS -->
+<div class="tab-bar">
+  <button class="tab-btn tab-m active" onclick="switchTab('m')">♂ Male <span id="tabM">0</span></button>
+  <button class="tab-btn tab-f" onclick="switchTab('f')">♀ Female <span id="tabF">0</span></button>
+  <button class="tab-btn tab-u" onclick="switchTab('u')">❓ Unknown <span id="tabU">0</span></button>
+</div>
+
+<!-- RESULTS -->
+<div class="results-grid">
+  <div class="panel res-panel active" id="panelM">
+    <div class="res-hdr">
+      <div class="res-title" style="color:var(--male)">♂ Male <span class="res-badge" id="mBadge">0</span></div>
+      <div class="res-actions">
+        <button class="icon-btn" onclick="copyResult('maleOut')">📋</button>
+        <button class="icon-btn" onclick="dlTxt('maleOut','male.txt')">⬇</button>
+        <button class="icon-btn" onclick="dlCsv('maleOut','male.csv','Male')">📊</button>
+      </div>
+    </div>
+    <textarea class="result-ta" id="maleOut" readonly placeholder="Male names appear here..."></textarea>
+  </div>
+  <div class="panel res-panel" id="panelF">
+    <div class="res-hdr">
+      <div class="res-title" style="color:var(--female)">♀ Female <span class="res-badge" id="fBadge">0</span></div>
+      <div class="res-actions">
+        <button class="icon-btn" onclick="copyResult('femaleOut')">📋</button>
+        <button class="icon-btn" onclick="dlTxt('femaleOut','female.txt')">⬇</button>
+        <button class="icon-btn" onclick="dlCsv('femaleOut','female.csv','Female')">📊</button>
+      </div>
+    </div>
+    <textarea class="result-ta" id="femaleOut" readonly placeholder="Female names appear here..."></textarea>
+  </div>
+  <div class="panel res-panel" id="panelU">
+    <div class="res-hdr">
+      <div class="res-title" style="color:var(--unknown)">❓ Unknown <span class="res-badge" id="uBadge">0</span></div>
+      <div class="res-actions">
+        <button class="icon-btn" onclick="copyResult('unknownOut')">📋</button>
+        <button class="icon-btn" onclick="dlTxt('unknownOut','unknown.txt')">⬇</button>
+        <button class="icon-btn" onclick="dlCsv('unknownOut','unknown.csv','Unknown')">📊</button>
+      </div>
+    </div>
+    <textarea class="result-ta" id="unknownOut" readonly placeholder="Unclear gender names appear here..."></textarea>
+  </div>
+</div>
+
+<!-- EXPORT MODAL -->
+<div class="modal-bg" id="exportModal">
+  <div class="modal">
+    <h3>📦 Export Results</h3>
+    <div class="modal-grid">
+      <button class="export-opt" onclick="doExport('txt')"><span class="icon">📄</span>Single TXT</button>
+      <button class="export-opt" onclick="doExport('csv')"><span class="icon">📊</span>CSV + Gender</button>
+      <button class="export-opt" onclick="doExport('3txt')"><span class="icon">🗂️</span>3 TXT Files</button>
+      <button class="export-opt" onclick="doExport('json')"><span class="icon">{ }</span>JSON Format</button>
+    </div>
+    <button class="modal-close" onclick="closeModal()">Cancel</button>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<footer>
+  NameGenderDetector © <a href="https://github.com/HumayunShariarHimu">Humayun Shariar Himu</a> 
+</footer>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════
+   LIGHTWEIGHT LOCAL HINT DATABASE
+   (Used only to speed up obvious cases; AI handles rest)
+═══════════════════════════════════════════════════ */
+
+const FEMALE_TITLES = new Set(['apu','apa','anti','aunty','aunti','khala','amma','maa','nani','dadi','bhabhi',
+  'begum','bibi','khatun','banu','sultana','madam','miss','mrs','ms']);
+
+const MALE_TITLES = new Set(['md','md.','mr','bhai','vai','kaka','mama','dada','baba','abba',
+  'sheikh','haji','hafez','mufti','maulana','qazi','kazi','sir','mr.']);
+
+// Strong pattern signals (high confidence, skip AI)
+const FEMALE_STRONG = new Set([
+  'nusrat','sumaiya','sadia','jannat','sefali','tania','fatema','ayesha','rupa',
+  'mahfuza','mahmuda','rahnuma','rabeya','rozina','rokeya','rokhsana','rupali',
+  'mousumi','shirin','shilpi','shanta','parveen','parvin','najma','nazma','nazmin',
+  'morsheda','momtaz','morium','lubna','laila','layla','khadija','khaleda',
+  'gulshan','farhana','farida','dilruba','champa','beauty','baby','bably','bubly',
+  'bulbul','anwara','anjuman','anjali','anita','amena','amina','akhi','hasna',
+  'yasmin','yasmine','yasmeen','zakia','zakira','zannat','zara','zahra','zenat',
+  'shopna','swapna','priya','disha','nisha','misha','lisha','trisha','irin',
+  'bristi','brishti','dalia','daisy','eti','eta','lucky','lucy','lily','poly','poli',
+  'farheen','farhin','fahmida','fahima','shabana','shabnam','samia','samira','naima',
+  'nahida','nadira','kobita','ishika','sitara','meena','meera','mukta','mukti',
+  'lutfun','maleka','malika','maloti','shapla','shapna','ruma','rimi','rimi','puja',
+  'chandana','lalita','pushpa','padma','gita','geeta','suchitra','sabrina','sabina',
+  'shahnaz','shahnur','shahana','sanjida','purnima','papiya','pakhi','popy','asha',
+  'asma','arifa','nargis','nasreen','nasrin','rina','mina','bina','lina','nina',
+  'sima','rima','lima','toma','soma','roma','mona','dona','dora','hena','lena',
+  'rena','mena','zena','shefali','kohinoor','josna','jui','mim','mitu','ritu',
+  'setu','neha','moni','hira','gul','ela','elina','uly','uma','usha','varsha',
+]);
+
+const MALE_STRONG = new Set([
+  'arif','rahim','karim','hasan','hassan','hussain','hossain','islam','ali','khan',
+  'sojib','rakib','riyad','emon','rasel','jahangir','ibrahim','ismail','idris',
+  'imran','habib','harun','golam','faruk','enamul','elias','delwar','aminul',
+  'akbar','akram','abdur','abul','zahid','zahir','yousuf','yunus','wahid',
+  'usman','uzzal','ujjal','tofael','tarek','sultan','subir','shamsul','saiful',
+  'saddam','ruhul','robi','robin','rafiqul','rafiq','rajib','raju','rajesh',
+  'nur','nurul','mosarraf','motin','mostafa','mizanur','mithu','masum','masud',
+  'lutfor','liton','khokon','jasimuddin','jahirul','jabed','javed','iqbal',
+  'hatem','hamid','forhad','fozlur','firoz','faruq','farid','enayet','dulal',
+  'dipu','dabashis','bulbul','bipul','binoy','badrul','babur','azizur','ayub',
+  'asad','ashraf','aslam','ashik','arman','anowar','anisur','alauddin','alamgir',
+  'ahmed','ahmad','ahammed','khaled','khalid','kamal','kamrul','nazrul','nazmul',
+  'polash','palash','raihan','rayhan','rezaul','ripon','sabbir','sagor','sajjad',
+  'salah','selim','salim','shakil','sirajul','siraj','sohrab','tanvir','tanveer',
+  'tuhin','zia','zillur','ziauddin','sumon','suman','simon','shaon',
+  'enam','nizam','belal','bilal','ilias','titu','minhaz','mahbub','mahfuz',
+  'toufiq','towfiq','badal','babu','biplob','biplab','delowar','dulal','faisal',
+  'farhan','forhad','golam','helal','ilyas','jashim','jewel','kabir','kafil',
+  'kawsar','khorshed','limon','manik','mehedi','mehdi','milon','minhaj','nazmul',
+  'omar','pronob','probal','rabbi','rakin','rashid','rokon','rubel','sahed',
+  'sahin','sakib','saleh','shafiq','shaheen','shahin','sharif','shohan','shuvo',
+  'subrata','tanim','tansen','tariqul','tipu','toha','tonmoy','turan','tushar',
+  'waliur','wadud','yakub','yaqub','zubair','zubayr',
+]);
+
+// Strong suffix signals
+const MALE_STRONG_SUFFIXES = ['uddin','oddin','uddhin','ullah','allah','uzzaman','ujjaman',
+  'urrahman','ulhaq','ulislam','uzzal','bari','uddin'];
+const FEMALE_STRONG_SUFFIXES = ['begum','khatun','banu','sultana','ara','una','ana'];
+
+// Pattern regexes
+const FEMALE_PATTERNS = [/begum$/i,/khatun$/i,/sultana$/i,/bibi$/i,/banu$/i,/jahan$/i,
+  /ara$/i,/runa$/i,/mala$/i,/lata$/i,/priya$/i,/devi$/i,/rani$/i,/maya$/i,/nahar$/i];
+const MALE_PATTERNS = [/uddin$/i,/rahman$/i,/rahim$/i,/islam$/i,/ullah$/i,
+  /hossain$/i,/hussain$/i,/ali$/i,/khan$/i,/sarker$/i,/molla$/i,/mullah$/i];
+
+/* ═══════════════════════════════════════════════════
+   EXTRACTION & LOCAL DETECTION
+═══════════════════════════════════════════════════ */
+function extractName(line) {
+  let s = line.trim();
+  s = s.replace(/^(\+?880|0)1[3-9]\d{8}\s*/,'').trim();
+  s = s.replace(/^\d[\d\s\-\+]{4,14}\s*/,'').trim();
+  return s;
+}
+
+function normTok(name) {
+  return name.toLowerCase().replace(/[^\w\s]/g,' ').split(/\s+/).filter(Boolean);
+}
+
+function localDetect(line) {
+  const name = extractName(line);
+  if (!name || name.length < 2) return {g:'Unknown', conf:0, name};
+  const toks = normTok(name);
+  const low = name.toLowerCase();
+
+  // Title check
+  for (const t of toks) {
+    if (FEMALE_TITLES.has(t)) return {g:'Female', conf:95, name};
+    if (MALE_TITLES.has(t)) return {g:'Male', conf:95, name};
+  }
+  // Strong keyword
+  for (const t of toks) {
+    if (FEMALE_STRONG.has(t)) return {g:'Female', conf:90, name};
+    if (MALE_STRONG.has(t)) return {g:'Male', conf:90, name};
+  }
+  // Strong suffixes
+  for (const s of MALE_STRONG_SUFFIXES) {
+    if (low.endsWith(s)) return {g:'Male', conf:88, name};
+  }
+  for (const s of FEMALE_STRONG_SUFFIXES) {
+    if (low.endsWith(s)) return {g:'Female', conf:88, name};
+  }
+  // Patterns
+  for (const p of FEMALE_PATTERNS) if (p.test(low)) return {g:'Female', conf:80, name};
+  for (const p of MALE_PATTERNS) if (p.test(low)) return {g:'Male', conf:80, name};
+
+  return {g:'?', conf:0, name}; // Needs AI
+}
+
+/* ═══════════════════════════════════════════════════
+   AI DETECTION — BATCH (up to 25 names per call)
+═══════════════════════════════════════════════════ */
+async function aiDetectBatch(names) {
+  // names: array of strings (already extracted)
+  const numbered = names.map((n,i) => `${i+1}. ${n}`).join('\n');
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:1000,
+        system:`You are an expert in Bangladeshi, Bengali, South Asian, Arabic, and international names.
+Given a numbered list of names, determine the gender of each.
+Reply ONLY with a JSON array of strings, one entry per name, each being "Male", "Female", or "Unknown".
+The array must have exactly as many entries as the input list.
+No explanation, no markdown, just the JSON array.
+Example input:
+1. Nusrat Jahan
+2. Karim Hossain
+Example output:
+["Female","Male"]`,
+        messages:[{role:'user', content: numbered}]
+      })
+    });
+    if (!res.ok) throw new Error('API error ' + res.status);
+    const data = await res.json();
+    const text = (data.content?.[0]?.text || '').trim();
+    const clean = text.replace(/```[a-z]*/gi,'').replace(/```/g,'').trim();
+    const arr = JSON.parse(clean);
+    if (!Array.isArray(arr)) throw new Error('Not array');
+    return names.map((_,i) => {
+      const v = (arr[i] || '').trim();
+      if (/^male$/i.test(v)) return 'Male';
+      if (/^female$/i.test(v)) return 'Female';
+      return 'Unknown';
+    });
+  } catch(e) {
+    // Fallback: single calls
+    const out = [];
+    for (const name of names) {
+      try {
+        const r = await fetch('https://api.anthropic.com/v1/messages', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({
+            model:'claude-sonnet-4-20250514',
+            max_tokens:10,
+            messages:[{role:'user', content:`Gender of name "${name}"? Reply only: Male, Female, or Unknown`}]
+          })
+        });
+        const d = await r.json();
+        const t = (d.content?.[0]?.text || '').trim();
+        if (/male/i.test(t) && !/female/i.test(t)) out.push('Male');
+        else if (/female/i.test(t)) out.push('Female');
+        else out.push('Unknown');
+      } catch { out.push('Unknown'); }
+    }
+    return out;
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   MAIN PROCESSING
+═══════════════════════════════════════════════════ */
+let results = {Male:[], Female:[], Unknown:[]};
+let processing = false;
+
+document.getElementById('processBtn').addEventListener('click', async () => {
+  if (processing) return;
+  const raw = document.getElementById('inputData').value;
+  const lines = raw.split('\n').map(l=>l.trim()).filter(Boolean);
+  if (!lines.length) { toast('⚠️ কোনো ডেটা নেই'); return; }
+
+  processing = true;
+  const btn = document.getElementById('processBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span style="opacity:0.7">⏳</span> Processing...';
+
+  const pw = document.getElementById('progWrap');
+  const aiLog = document.getElementById('aiLog');
+  pw.style.display = 'block';
+  aiLog.innerHTML = '';
+  results = {Male:[], Female:[], Unknown:[]};
+
+  // Phase 1: Local detection
+  const localRes = [];
+  const needAI = []; // {idx, name}
+
+  setProg(0, 'Local Analysis...', '');
+  for (let i=0; i<lines.length; i++) {
+    const r = localDetect(lines[i]);
+    if (r.conf >= 80) {
+      localRes.push({line:lines[i], g:r.g, name:r.name});
+    } else {
+      localRes.push(null);
+      needAI.push({idx:i, name:r.name || extractName(lines[i])});
+    }
+    if (i % 10 === 0) await tick();
+    setProg(Math.round((i/lines.length)*40), `Local: ${i+1}/${lines.length}`, '');
+  }
+
+  const localDone = localRes.filter(Boolean).length;
+  addLog(`✓ Local: ${localDone}/${lines.length} detected`, 'done-line');
+
+  // Phase 2: AI for ambiguous
+  if (needAI.length > 0) {
+    addLog(`🧠 AI analyzing ${needAI.length} names in batches...`, 'ai-line');
+    const BATCH = 25;
+    for (let j=0; j<needAI.length; j+=BATCH) {
+      const chunk = needAI.slice(j, j+BATCH);
+      const pct = 40 + Math.round(((j/needAI.length)*55));
+      setProg(pct, `AI Batch ${Math.floor(j/BATCH)+1}/${Math.ceil(needAI.length/BATCH)}`, `Sending ${chunk.length} names to AI...`);
+      addLog(`  → Batch ${Math.floor(j/BATCH)+1}: ${chunk.map(x=>x.name).slice(0,3).join(', ')}${chunk.length>3?'...':''}`, 'ai-line');
+
+      const genders = await aiDetectBatch(chunk.map(x=>x.name));
+      for (let k=0; k<chunk.length; k++) {
+        localRes[chunk[k].idx] = {line:lines[chunk[k].idx], g:genders[k], name:chunk[k].name};
+      }
+      await tick();
+    }
+    const aiDone = needAI.length;
+    addLog(`✓ AI done: ${aiDone} names classified`, 'done-line');
+  } else {
+    addLog('⚡ All names detected locally (no AI needed)', 'done-line');
+  }
+
+  // Compile
+  for (const r of localRes) {
+    if (!r) continue;
+    (results[r.g] || results['Unknown']).push(r.line);
+  }
+
+  document.getElementById('maleOut').value = results.Male.join('\n');
+  document.getElementById('femaleOut').value = results.Female.join('\n');
+  document.getElementById('unknownOut').value = results.Unknown.join('\n');
+
+  updateStats(lines.length);
+  setTabCounts();
+  setProg(100, 'Complete!', '');
+  setTimeout(()=>{ pw.style.display='none'; }, 1500);
+
+  processing = false;
+  btn.disabled = false;
+  btn.innerHTML = '⚡ Process Gender';
+  toast(`✅ ${lines.length} টি নাম বিশ্লেষণ সম্পন্ন`);
+});
+
+function setProg(pct, label, detail) {
+  document.getElementById('progFill').style.width = pct + '%';
+  document.getElementById('progText').textContent = label;
+  document.getElementById('progPct').textContent = pct + '%';
+  document.getElementById('progDetail').textContent = detail;
+}
+
+function addLog(msg, cls) {
+  const el = document.getElementById('aiLog');
+  const line = document.createElement('div');
+  line.className = cls || '';
+  line.textContent = msg;
+  el.appendChild(line);
+  el.scrollTop = el.scrollHeight;
+}
+
+function tick() { return new Promise(r=>setTimeout(r,0)); }
+
+/* ═══════════════════════════════════════════════════
+   STATS & CHART
+═══════════════════════════════════════════════════ */
+function updateStats(total) {
+  const m=results.Male.length, f=results.Female.length, u=results.Unknown.length;
+  document.getElementById('maleCount').textContent = m;
+  document.getElementById('femaleCount').textContent = f;
+  document.getElementById('unknownCount').textContent = u;
+  document.getElementById('totalCount').textContent = total;
+  document.getElementById('mBadge').textContent = m;
+  document.getElementById('fBadge').textContent = f;
+  document.getElementById('uBadge').textContent = u;
+  const pct = v => total ? Math.round(v/total*100)+'%' : '—';
+  document.getElementById('malePct').textContent = pct(m);
+  document.getElementById('femalePct').textContent = pct(f);
+  document.getElementById('unknownPct').textContent = pct(u);
+  if (total > 0) {
+    const md=Math.round(m/total*360), fd=Math.round(f/total*360);
+    document.getElementById('pieChart').style.background =
+      `conic-gradient(var(--male) 0deg ${md}deg, var(--female) ${md}deg ${md+fd}deg, var(--unknown) ${md+fd}deg 360deg)`;
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   MOBILE TABS
+═══════════════════════════════════════════════════ */
+function setTabCounts() {
+  document.getElementById('tabM').textContent = results.Male.length;
+  document.getElementById('tabF').textContent = results.Female.length;
+  document.getElementById('tabU').textContent = results.Unknown.length;
+}
+
+function switchTab(which) {
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.res-panel').forEach(p=>p.classList.remove('active'));
+  const map = {m:['panelM','tab-m'],f:['panelF','tab-f'],u:['panelU','tab-u']};
+  document.getElementById(map[which][0]).classList.add('active');
+  document.querySelector(`.${map[which][1]}`).classList.add('active');
+}
+
+/* ═══════════════════════════════════════════════════
+   SEARCH FILTER
+═══════════════════════════════════════════════════ */
+document.getElementById('searchInp').addEventListener('input', function() {
+  const q = this.value.toLowerCase();
+  if (!q) {
+    document.getElementById('maleOut').value = results.Male.join('\n');
+    document.getElementById('femaleOut').value = results.Female.join('\n');
+    document.getElementById('unknownOut').value = results.Unknown.join('\n');
+    return;
+  }
+  document.getElementById('maleOut').value = results.Male.filter(l=>l.toLowerCase().includes(q)).join('\n');
+  document.getElementById('femaleOut').value = results.Female.filter(l=>l.toLowerCase().includes(q)).join('\n');
+  document.getElementById('unknownOut').value = results.Unknown.filter(l=>l.toLowerCase().includes(q)).join('\n');
+});
+
+/* ═══════════════════════════════════════════════════
+   FILE UPLOAD
+═══════════════════════════════════════════════════ */
+document.getElementById('fileInput').addEventListener('change', e => handleFiles(e.target.files));
+const uz = document.getElementById('uploadZone');
+uz.addEventListener('dragover', e=>{ e.preventDefault(); uz.classList.add('drag-over'); });
+uz.addEventListener('dragleave', ()=>uz.classList.remove('drag-over'));
+uz.addEventListener('drop', e=>{ e.preventDefault(); uz.classList.remove('drag-over'); handleFiles(e.dataTransfer.files); });
+
+function handleFiles(files) {
+  let all='', rem=files.length;
+  for (const f of files) {
+    const r = new FileReader();
+    r.onload = e => {
+      all += (all?'\n':'') + e.target.result;
+      if (--rem === 0) {
+        const ta = document.getElementById('inputData');
+        ta.value = (ta.value?ta.value+'\n':'') + all;
+        updateCounter();
+        toast(`📂 ${files.length} ফাইল লোড হয়েছে`);
+      }
+    };
+    r.readAsText(f,'UTF-8');
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   UTILITIES
+═══════════════════════════════════════════════════ */
+function updateCounter() {
+  const ta = document.getElementById('inputData');
+  const lines = ta.value.split('\n').filter(l=>l.trim()).length;
+  document.getElementById('lineCount').textContent = lines + ' lines';
+  document.getElementById('charCount').textContent = ta.value.length + ' chars';
+}
+document.getElementById('inputData').addEventListener('input', updateCounter);
+
+async function pasteClip() {
+  try {
+    const text = await navigator.clipboard.readText();
+    const ta = document.getElementById('inputData');
+    ta.value = (ta.value?ta.value+'\n':'') + text;
+    updateCounter();
+    toast('📋 পেস্ট হয়েছে');
+  } catch { toast('⚠️ ক্লিপবোর্ড অ্যাক্সেস দরকার'); }
+}
+
+function loadSample() {
+  document.getElementById('inputData').value =
+`01XXXXXXXXX সেফালি আন্টি
+01XXXXXXXXX আরিফ হাসান
+01XXXXXXXXX নুসরাত জাহান
+01XXXXXXXXX মো রহিম উদ্দিন
+01XXXXXXXXX সুমাইয়া আক্তার
+01XXXXXXXXX কামরুজ্জামান
+01XXXXXXXXX মাহফুজা বেগম
+01XXXXXXXXX সাইফুল ইসলাম
+01XXXXXXXXX তানিয়া সুলতানা
+01XXXXXXXXX ফরহান আহমেদ
+Sumaiya Akter
+Karim Hossain
+Nusrat Jahan
+Md. Rakibul Islam
+Fatema Begum
+Mohammad Zahirul Haq
+Jennifer Smith
+Ahmed Al-Hassan
+Li Wei
+Maria Garcia
+John Doe`;
+  updateCounter();
+  toast('📝 স্যাম্পল লোড হয়েছে');
+}
+
+function sortInput() {
+  const ta = document.getElementById('inputData');
+  ta.value = ta.value.split('\n').filter(Boolean).sort().join('\n');
+  updateCounter(); toast('↕️ Sort সম্পন্ন');
+}
+
+function dedupeInput() {
+  const ta = document.getElementById('inputData');
+  const seen = new Set();
+  ta.value = ta.value.split('\n').filter(l=>{
+    const k=l.trim().toLowerCase();
+    if (!k||seen.has(k)) return false;
+    seen.add(k); return true;
+  }).join('\n');
+  updateCounter(); toast('🔃 Duplicates মুছে ফেলা হয়েছে');
+}
+
+function clearAll() {
+  document.getElementById('inputData').value='';
+  document.getElementById('maleOut').value='';
+  document.getElementById('femaleOut').value='';
+  document.getElementById('unknownOut').value='';
+  document.getElementById('aiLog').innerHTML='';
+  results={Male:[],Female:[],Unknown:[]};
+  ['maleCount','femaleCount','unknownCount','totalCount'].forEach(id=>document.getElementById(id).textContent='0');
+  ['mBadge','fBadge','uBadge'].forEach(id=>document.getElementById(id).textContent='0');
+  ['malePct','femalePct','unknownPct'].forEach(id=>document.getElementById(id).textContent='—');
+  ['lineCount'].forEach(id=>document.getElementById(id).textContent='0 lines');
+  document.getElementById('charCount').textContent='0 chars';
+  document.getElementById('pieChart').style.background='conic-gradient(#1a2a3a 0deg,#1a2a3a 360deg)';
+  setTabCounts();
+  toast('🗑️ সব মুছে গেছে');
+}
+
+function copyResult(id) {
+  const ta = document.getElementById(id);
+  if (!ta.value) { toast('⚠️ কিছু নেই'); return; }
+  navigator.clipboard.writeText(ta.value).then(()=>toast('📋 কপি হয়েছে'));
+}
+
+function dlTxt(id, fn) {
+  const text = document.getElementById(id).value;
+  if (!text) { toast('⚠️ কিছু নেই'); return; }
+  download(text, fn, 'text/plain');
+}
+
+function dlCsv(id, fn, gender) {
+  const lines = document.getElementById(id).value.split('\n').filter(Boolean);
+  if (!lines.length) { toast('⚠️ কিছু নেই'); return; }
+  const csv = 'Original,Name,Gender\n' + lines.map(l=>`"${l}","${extractName(l)}","${gender}"`).join('\n');
+  download(csv, fn, 'text/csv');
+}
+
+function downloadAll() {
+  document.getElementById('exportModal').classList.add('open');
+}
+function closeModal() {
+  document.getElementById('exportModal').classList.remove('open');
+}
+
+function doExport(type) {
+  closeModal();
+  const m=results.Male, f=results.Female, u=results.Unknown;
+  if (!m.length&&!f.length&&!u.length) { toast('⚠️ প্রথমে Process করুন'); return; }
+
+  if (type==='txt') {
+    download(['=== MALE ===', ...m,'','=== FEMALE ===', ...f,'','=== UNKNOWN ===', ...u].join('\n'),'all_names.txt','text/plain');
+  } else if (type==='csv') {
+    const rows=[['Original','Name','Gender']];
+    for (const l of m) rows.push([l,extractName(l),'Male']);
+    for (const l of f) rows.push([l,extractName(l),'Female']);
+    for (const l of u) rows.push([l,extractName(l),'Unknown']);
+    download(rows.map(r=>r.map(c=>`"${c}"`).join(',')).join('\n'),'names.csv','text/csv');
+  } else if (type==='3txt') {
+    dlTxt('maleOut','male.txt');
+    setTimeout(()=>dlTxt('femaleOut','female.txt'),300);
+    setTimeout(()=>dlTxt('unknownOut','unknown.txt'),600);
+  } else if (type==='json') {
+    const obj={
+      summary:{male:m.length,female:f.length,unknown:u.length,total:m.length+f.length+u.length},
+      male:m.map(l=>({line:l,name:extractName(l)})),
+      female:f.map(l=>({line:l,name:extractName(l)})),
+      unknown:u.map(l=>({line:l,name:extractName(l)}))
+    };
+    download(JSON.stringify(obj,null,2),'names.json','application/json');
+  }
+  toast('⬇️ ডাউনলোড শুরু হয়েছে');
+}
+
+function download(content, filename, type) {
+  const blob = new Blob(['\uFEFF'+content],{type:type+';charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+let toastTimer;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>el.classList.remove('show'), 3000);
+}
+
+document.getElementById('exportModal').addEventListener('click', function(e) {
+  if (e.target===this) closeModal();
+});
+</script>
+</body>
+</html>
